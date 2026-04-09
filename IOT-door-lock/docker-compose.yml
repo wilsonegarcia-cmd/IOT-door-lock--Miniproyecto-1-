@@ -1,0 +1,40 @@
+services:
+
+  web:
+    build: .
+    container_name: rfid-web
+    ports:
+      - "80:80"
+    environment:
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Guayaquil}
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS: ${DB_PASS}
+      DB_NAME: rfid_access
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Live-reload: changes to PHP files are reflected immediately
+      - ./src/php:/var/www/html
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: rfid-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: rfid_access
+    volumes:
+      - db_data:/var/lib/mysql
+      # SQL schema is loaded automatically on first run
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  db_data:
